@@ -60,7 +60,7 @@ python3 -u solution.py --dataset_name "Market1501" --use_horizontal_flipping_ins
 ## Evaluation
 
 ```bash
-python3 -u solution.py --dataset_name "Market1501" --backbone_model_name "resnet50" --pretrained_model_file_path "?.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1
+python3 -u solution.py --dataset_name "Market1501" --backbone_model_name "resnesta50" --pretrained_model_file_path "?.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1
 ```
 
 - Fill in the `pretrained_model_file_path` argument using the h5 file obtained during training.
