@@ -1,7 +1,7 @@
 ![Python](https://img.shields.io/badge/python-3.8-blue?style=flat-square&logo=python)
-![TensorFlow](https://img.shields.io/badge/tensorflow-2.2.2-green?style=flat-square&logo=tensorflow)
+![TensorFlow](https://img.shields.io/badge/tensorflow-2.2.3-green?style=flat-square&logo=tensorflow)
 
-# FlipReID: Closing the Gap between Training and Inference in Person Re-Identification
+# FlipReID: Closing the Gap Between Training and Inference in Person Re-Identification
 
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/flipreid-closing-the-gap-between-training-and/person-re-identification-on-msmt17)](https://paperswithcode.com/sota/person-re-identification-on-msmt17?p=flipreid-closing-the-gap-between-training-and)
 
@@ -32,7 +32,7 @@ conda create --yes --name TensorFlow2.2 python=3.8
 conda activate TensorFlow2.2
 conda install --yes cudatoolkit=10.1 cudnn=7.6 -c nvidia
 conda install --yes cython matplotlib numpy=1.18 pandas pydot scikit-learn
-pip install tensorflow==2.2.2
+pip install tensorflow==2.2.3
 pip install tf2cv
 pip install opencv-python
 pip install albumentations --no-binary imgaug,albumentations
@@ -84,15 +84,17 @@ python3 -u solution.py --dataset_name "Market1501" --backbone_model_name "resnes
 
 ## Citation
 
-Please consider citing [this work](https://arxiv.org/abs/2105.05639) if it helps your research.
+Please consider citing [this work](https://ieeexplore.ieee.org/document/9484010) if it helps your research.
 
 ```
-@misc{ni2021flipreid,
-  title={FlipReID: Closing the Gap between Training and Inference in Person Re-Identification},
-  author={Xingyang Ni and Esa Rahtu},
+@inproceedings{ni2021flipreid,
+  author={Ni, Xingyang and Rahtu, Esa},
+  booktitle={2021 9th European Workshop on Visual Information Processing (EUVIP)},
+  title={FlipReID: Closing the Gap Between Training and Inference in Person Re-Identification},
   year={2021},
-  eprint={2105.05639},
-  archivePrefix={arXiv},
-  primaryClass={cs.CV}
+  volume={},
+  number={},
+  pages={1-6},
+  doi={10.1109/EUVIP50544.2021.9484010}
 }
 ```
