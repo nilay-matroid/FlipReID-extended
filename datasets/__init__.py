@@ -3,6 +3,7 @@ from collections import OrderedDict
 from sklearn.preprocessing import LabelEncoder
 
 from datasets.dukemtmc_reid import load_DukeMTMC_reID
+from datasets.last import load_LaST
 from datasets.market1501 import load_Market1501
 from datasets.msmt17 import load_MSMT17
 
@@ -24,7 +25,8 @@ def load_accumulated_info_of_dataset(root_folder_path, dataset_name):
     dataset_name_to_load_function_dict = {
         "Market1501": load_Market1501,
         "DukeMTMC_reID": load_DukeMTMC_reID,
-        "MSMT17": load_MSMT17
+        "MSMT17": load_MSMT17,
+        "LaST": load_LaST
     }
     assert dataset_name in dataset_name_to_load_function_dict
     load_function = dataset_name_to_load_function_dict[dataset_name]
