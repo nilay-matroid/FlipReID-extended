@@ -34,9 +34,10 @@ from metric_learning.triplet_hermans import batch_hard, cdist
 from utils.model_utils import (replicate_model, specify_regularizers,
                                specify_trainable)
 from utils.vis_utils import summarize_model, visualize_model
+from tqdm_predict_callback import TQDMPredictCallback
 
 flags.DEFINE_string("root_folder_path",
-                    os.path.expanduser("~/Documents/Local Storage/Dataset"),
+                    os.path.expanduser("~/Nilay/PersonReIDModels/Datasets"),
                     "Folder path of the dataset.")
 flags.DEFINE_string("dataset_name", "Market1501", "Name of the dataset.")
 # ["Market1501", "DukeMTMC_reID", "MSMT17"]
@@ -107,6 +108,9 @@ flags.DEFINE_string("pretrained_model_file_path", "",
 flags.DEFINE_string("output_folder_path",
                     os.path.abspath(os.path.join(__file__, "../output")),
                     "Path to directory to output files.")
+flags.DEFINE_integer("special_num_classes", -1,
+                     " Represents the number of classes the model was trained on.\
+                      When eval dataset has different number of classes than that of the model.")
 FLAGS = flags.FLAGS
 
 
@@ -123,7 +127,7 @@ def init_model(backbone_model_name, freeze_backbone_for_N_epochs, input_shape,
                region_num, attribute_name_to_label_encoder_dict,
                kernel_regularization_factor, bias_regularization_factor,
                gamma_regularization_factor, beta_regularization_factor,
-               pooling_mode, min_value, max_value, use_horizontal_flipping):
+               pooling_mode, min_value, max_value, use_horizontal_flipping, special_num_classes=-1):
 
     def _add_pooling_module(input_tensor):
         # Add a global pooling layer
@@ -153,7 +157,11 @@ def init_model(backbone_model_name, freeze_backbone_for_N_epochs, input_shape,
         # Add a dense layer with softmax activation
         label_encoder = attribute_name_to_label_encoder_dict["identity_ID"]
         class_num = len(label_encoder.classes_)
-        output_tensor = Dense(units=class_num,
+        print("Classes of evaluation dataset: ", class_num)
+        if special_num_classes != -1:
+            print("Classes model was trained on: ", special_num_classes)
+            print("Using the above number of classes to load model")
+        output_tensor = Dense(units=special_num_classes,
                               use_bias=False,
                               kernel_initializer=RandomNormal(
                                   mean=0.0, stddev=0.001))(output_tensor)
@@ -344,7 +352,7 @@ class TrainDataSequence(Sequence):
                  attribute_name_to_label_encoder_dict, input_shape,
                  image_augmentor, use_data_augmentation, label_repetition_num,
                  identity_num_per_batch, image_num_per_identity,
-                 steps_per_epoch):
+                 steps_per_epoch, special_num_classes=-1):
         super(TrainDataSequence, self).__init__()
 
         # Save as variables
@@ -352,6 +360,9 @@ class TrainDataSequence(Sequence):
         self.image_augmentor, self.use_data_augmentation = image_augmentor, use_data_augmentation
         self.label_repetition_num = label_repetition_num
         self.identity_num_per_batch, self.image_num_per_identity, self.steps_per_epoch = identity_num_per_batch, image_num_per_identity, steps_per_epoch
+
+        # special_num_classes
+        self.special_num_classes = special_num_classes
 
         # Unpack image_file_path and identity_ID
         self.image_file_path_array, self.identity_ID_array = self.accumulated_info_dataframe[
@@ -446,9 +457,17 @@ class TrainDataSequence(Sequence):
 
             # Get the one hot encoding vector
             identity_ID = accumulated_info["identity_ID"]
-            one_hot_encoding = np.zeros(len(label_encoder.classes_),
-                                        dtype=np.float32)
-            one_hot_encoding[label_encoder.transform([identity_ID])[0]] = 1
+
+
+            if self.special_num_classes != -1:
+                one_hot_encoding = np.zeros(self.special_num_classes, dtype=np.float32)
+                # set last label as one if eval data set has class index more than what model was trained on.
+                one_hot_encoding[min(label_encoder.transform([identity_ID])[0], self.special_num_classes-1)] = 1
+            else:
+                one_hot_encoding = np.zeros(len(label_encoder.classes_),
+                                            dtype=np.float32)
+                one_hot_encoding[label_encoder.transform([identity_ID])[0]] = 1
+            
             one_hot_encoding_list.append(one_hot_encoding)
 
         # Construct image_content_array
@@ -483,6 +502,7 @@ class TestDataSequence(Sequence):
         self.batch_size = batch_size
         self.steps_per_epoch = int(
             np.ceil(len(self.image_file_path_array) / self.batch_size))
+        self.total = self.steps_per_epoch
 
         # Initiation
         self.image_file_path_list = self.image_file_path_array.tolist()
@@ -567,14 +587,16 @@ class Evaluator(Callback):
             self.inference_model.predict(
                 x=data_generator,
                 workers=self.workers,
-                use_multiprocessing=self.use_multiprocessing))
+                use_multiprocessing=self.use_multiprocessing,
+                callbacks=[TQDMPredictCallback(data_generator.total)]))
         if self.use_horizontal_flipping:
             data_generator.enable_horizontal_flipping()
             feature_array += apply_stacking(
                 self.inference_model.predict(
                     x=data_generator,
                     workers=self.workers,
-                    use_multiprocessing=self.use_multiprocessing))
+                    use_multiprocessing=self.use_multiprocessing,
+                    callbacks=[TQDMPredictCallback(data_generator.total)]))
             feature_array /= 2
         return feature_array
 
@@ -732,6 +754,7 @@ def main(_):
     use_re_ranking = FLAGS.use_re_ranking
     evaluation_only, save_data_to_disk = FLAGS.evaluation_only, FLAGS.save_data_to_disk
     pretrained_model_file_path = FLAGS.pretrained_model_file_path
+    special_num_classes = FLAGS.special_num_classes
 
     output_folder_path = os.path.abspath(
         os.path.join(FLAGS.output_folder_path,
@@ -785,7 +808,8 @@ def main(_):
         pooling_mode=pooling_mode,
         min_value=min_value,
         max_value=max_value,
-        use_horizontal_flipping=use_horizontal_flipping_inside_model)
+        use_horizontal_flipping=use_horizontal_flipping_inside_model,
+        special_num_classes=special_num_classes)
     visualize_model(model=training_model, output_folder_path=output_folder_path)
 
     print("Initiating the image augmentor ...")
@@ -806,7 +830,8 @@ def main(_):
         label_repetition_num=len(training_model.outputs),
         identity_num_per_batch=identity_num_per_batch,
         image_num_per_identity=image_num_per_identity,
-        steps_per_epoch=steps_per_epoch)
+        steps_per_epoch=steps_per_epoch,
+        special_num_classes=special_num_classes)
     test_evaluator_callback = Evaluator(
         inference_model=inference_model,
         split_name="test",
@@ -850,6 +875,11 @@ def main(_):
         print("Loading weights from {} ...".format(pretrained_model_file_path))
         # Load weights from the pretrained model
         training_model.load_weights(pretrained_model_file_path)
+
+        # change last layer if needed
+        actual_classes  = train_and_valid_attribute_name_to_label_encoder_dict["identity_ID"].classes_
+        print("Changing last layer to actual number of classes: ", actual_classes)
+
         # Save the inference model
         inference_model_file_path = os.path.abspath(
             os.path.join(pretrained_model_file_path, "..",
@@ -922,4 +952,8 @@ def main(_):
 
 
 if __name__ == "__main__":
+    physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+    config = tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    print("Setting memory growth ... ")
     app.run(main)
