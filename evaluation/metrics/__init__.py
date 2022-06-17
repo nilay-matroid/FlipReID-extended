@@ -18,7 +18,7 @@ def compute_CMC_mAP(distmat,
                     g_pids,
                     q_camids,
                     g_camids,
-                    max_rank=20,
+                    max_rank=50,
                     use_metric_cuhk03=False):
     """Evaluates CMC rank.
 

@@ -36,7 +36,7 @@ def _load_accumulated_info(root_folder_path,
     return accumulated_info_dataframe
 
 
-def load_MSMT17(root_folder_path):
+def load_MSMT17(root_folder_path, **kwargs):
     train_accumulated_info_dataframe = _load_accumulated_info(
         root_folder_path=root_folder_path,
         image_folder_name="mask_train_v2",

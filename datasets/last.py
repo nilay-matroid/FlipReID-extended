@@ -84,7 +84,32 @@ def _load_accumulated_info(root_folder_path,
     return accumulated_info_dataframe
 
 
-def load_LaST(root_folder_path, use_eval_set=False):
+def _get_imagedata_info(data: pd.DataFrame):    
+    num_pids = data["identity_ID"].nunique()
+    num_cams = data["camera_ID"].nunique()
+    num_imgs = data["image_file_path"].nunique()
+    return num_pids, num_imgs, num_cams
+
+  
+def _print_dataset_statistics_movie(train, query, gallery, use_eval_set):
+    num_train_pids, num_train_imgs, _ = _get_imagedata_info(train)
+    num_query_pids, num_query_imgs, _ = _get_imagedata_info(query)
+    num_gallery_pids, num_gallery_imgs, _ = _get_imagedata_info(gallery)
+
+    if use_eval_set:
+        test_or_eval = "eval"
+    else:
+        test_or_eval = "test"
+
+    print("Dataset statistics:")
+    print("  --------------------------------------")
+    print("  subset         | # ids     | # images")
+    print("  --------------------------------------")
+    print("  train          | {:5d}     | {:8d}".format(num_train_pids, num_train_imgs))
+    print("  query   ({})       | {:5d}     | {:8d}".format(test_or_eval, num_query_pids, num_query_imgs))
+    print("  gallery ({})      | {:5d}     | {:8d}".format(test_or_eval, num_gallery_pids, num_gallery_imgs))
+
+def load_LaST(root_folder_path, use_eval_set=False, verbose=True, **kwargs):
     test_folder = "test"
     if use_eval_set:
         test_folder = "val"
@@ -96,4 +121,9 @@ def load_LaST(root_folder_path, use_eval_set=False):
     test_gallery_accumulated_info_dataframe = _load_accumulated_info(
         root_folder_path=root_folder_path,
         image_folder_name=test_folder, subfolder_name="gallery", recam=len(test_query_accumulated_info_dataframe))
+
+    if verbose:
+        _print_dataset_statistics_movie(train_and_valid_accumulated_info_dataframe,\
+             test_query_accumulated_info_dataframe, test_gallery_accumulated_info_dataframe, use_eval_set)
+
     return train_and_valid_accumulated_info_dataframe, test_query_accumulated_info_dataframe, test_gallery_accumulated_info_dataframe

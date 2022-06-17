@@ -8,6 +8,7 @@ import pandas as pd
 def _process_dir(dir_path, is_train=False):
     img_path = ImageFolder(dir_path).imgs
     accumulated_info_list = []
+    idx = 0
     for path, v in img_path:
         filename = path.split('/')[-1]
         if not is_train:
@@ -29,8 +30,34 @@ def _process_dir(dir_path, is_train=False):
             "camera_ID": camera_id
         }
         accumulated_info_list.append(accumulated_info)
+        idx += 1
+        if idx >= 5 and is_train:
+            # return only first few batches for train as we are never training on SYSU-30k train dataset
+            return accumulated_info_list
+
     return accumulated_info_list
 
+def _get_imagedata_info(data: pd.DataFrame):    
+    num_pids = data["identity_ID"].nunique()
+    num_cams = data["camera_ID"].nunique()
+    num_imgs = data["image_file_path"].nunique()
+    return num_pids, num_imgs, num_cams
+
+  
+def _print_dataset_statistics_movie(train, query, gallery):
+    num_train_pids, num_train_imgs, _ = _get_imagedata_info(train)
+    num_query_pids, num_query_imgs, _ = _get_imagedata_info(query)
+    num_gallery_pids, num_gallery_imgs, _ = _get_imagedata_info(gallery)
+
+    test_or_eval = "test"
+
+    print("Dataset statistics:")
+    print("  --------------------------------------")
+    print("  subset         | # ids     | # images")
+    print("  --------------------------------------")
+    print("  train          | {:5d}     | {:8d}".format(num_train_pids, num_train_imgs))
+    print("  query   ({})       | {:5d}     | {:8d}".format(test_or_eval, num_query_pids, num_query_imgs))
+    print("  gallery ({})      | {:5d}     | {:8d}".format(test_or_eval, num_gallery_pids, num_gallery_imgs))
 
 
 def _load_accumulated_info(root_folder_path,
@@ -84,7 +111,7 @@ def _load_accumulated_info(root_folder_path,
     else:
         image_folder_path = os.path.join(dataset_folder_path, image_folder_name)
 
-    if image_folder_name == "sysu_train_set_all":
+    if image_folder_name == "sysu_train_set_all" or image_folder_name == "sysu_train_set_small":
         accumulated_info_list = _process_dir(image_folder_path, is_train=True)
     else:
         accumulated_info_list = _process_dir(image_folder_path, is_train=False)
@@ -93,13 +120,17 @@ def _load_accumulated_info(root_folder_path,
     accumulated_info_dataframe = pd.DataFrame(accumulated_info_list)
     return accumulated_info_dataframe
 
-
-def load_sysu30k(root_folder_path):
+def load_sysu30k(root_folder_path, verbose=False, **kwargs):
     train_and_valid_accumulated_info_dataframe = _load_accumulated_info(
         root_folder_path=root_folder_path,
-        image_folder_name="sysu_train_set_all", subfolder_name=None)
+        image_folder_name="sysu_train_set_small", subfolder_name=None)
     test_query_accumulated_info_dataframe = _load_accumulated_info(
         root_folder_path=root_folder_path, image_folder_name="sysu_test_set_all", subfolder_name="query")
     test_gallery_accumulated_info_dataframe = _load_accumulated_info(
         root_folder_path=root_folder_path, image_folder_name="sysu_test_set_all", subfolder_name="gallery")
+
+    if verbose:
+        _print_dataset_statistics_movie(train_and_valid_accumulated_info_dataframe, test_query_accumulated_info_dataframe,\
+             test_gallery_accumulated_info_dataframe)
+
     return train_and_valid_accumulated_info_dataframe, test_query_accumulated_info_dataframe, test_gallery_accumulated_info_dataframe

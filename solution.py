@@ -111,6 +111,12 @@ flags.DEFINE_string("output_folder_path",
 flags.DEFINE_integer("special_num_classes", -1,
                      " Represents the number of classes the model was trained on.\
                       When eval dataset has different number of classes than that of the model.")
+flags.DEFINE_bool("use_eval_set", False,
+                  "Use eval instead of test set")
+flags.DEFINE_bool("verbose", True, "Be verbose during dataloading")     
+flags.DEFINE_bool("use_custom_eval_batch_size", False,
+                  "Use custom eval batch size")
+flags.DEFINE_integer("custom_eval_batch_size", 16, "custom eval batch size")
 FLAGS = flags.FLAGS
 
 
@@ -766,7 +772,8 @@ def main(_):
     print("Loading the annotations of the {} dataset ...".format(dataset_name))
     train_and_valid_accumulated_info_dataframe, test_query_accumulated_info_dataframe, \
         test_gallery_accumulated_info_dataframe, train_and_valid_attribute_name_to_label_encoder_dict = \
-        load_accumulated_info_of_dataset(root_folder_path=root_folder_path, dataset_name=dataset_name)
+        load_accumulated_info_of_dataset(root_folder_path=root_folder_path, dataset_name=dataset_name,\
+             use_eval_set=FLAGS.use_eval_set, verbose=FLAGS.verbose)
 
     if use_testing:
         if testing_size != 1:
@@ -832,6 +839,14 @@ def main(_):
         image_num_per_identity=image_num_per_identity,
         steps_per_epoch=steps_per_epoch,
         special_num_classes=special_num_classes)
+
+
+    if FLAGS.use_custom_eval_batch_size:
+        custom_eval_batch_size = FLAGS.custom_eval_batch_size
+        print("Using custom batch size for test evaluator callback: ", custom_eval_batch_size)
+    else:
+        custom_eval_batch_size = batch_size
+
     test_evaluator_callback = Evaluator(
         inference_model=inference_model,
         split_name="test",
@@ -841,7 +856,7 @@ def main(_):
         input_shape=input_shape,
         use_horizontal_flipping=use_horizontal_flipping_in_evaluation,
         use_re_ranking=use_re_ranking,
-        batch_size=batch_size,
+        batch_size=custom_eval_batch_size,
         workers=workers,
         use_multiprocessing=use_multiprocessing,
         every_N_epochs=evaluate_testing_every_N_epochs,

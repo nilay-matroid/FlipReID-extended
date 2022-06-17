@@ -48,7 +48,7 @@ def _load_accumulated_info(root_folder_path,
     return accumulated_info_dataframe
 
 
-def load_DukeMTMC_reID(root_folder_path):
+def load_DukeMTMC_reID(root_folder_path, **kwargs):
     train_and_valid_accumulated_info_dataframe = _load_accumulated_info(
         root_folder_path=root_folder_path,
         image_folder_name="bounding_box_train")
