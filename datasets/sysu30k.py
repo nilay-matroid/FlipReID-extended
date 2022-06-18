@@ -21,8 +21,8 @@ def _process_dir(dir_path, is_train=False):
             camera_id = int(camera[0])
         else:
             # Dummy label and camera ids for train images as this is a weakly supervised dataset
-            label_id = -4e7
-            camera_id = -4e7
+            label_id = 1
+            camera_id = 1
 
         accumulated_info = {
             "image_file_path": path,
