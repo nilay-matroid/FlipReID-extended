@@ -778,9 +778,12 @@ def main(_):
     output_folder_path = os.path.abspath(
         os.path.join(FLAGS.output_folder_path,
                      "{}_{}".format(dataset_name, backbone_model_name)))
-    shutil.rmtree(output_folder_path, ignore_errors=True)
-    os.makedirs(output_folder_path)
-    print("Recreating the output folder at {} ...".format(output_folder_path))
+
+    # Need to retain output folder if resuming from freezed backbone training
+    if not resume_after_freezing_backbone_training:
+        shutil.rmtree(output_folder_path, ignore_errors=True)
+        os.makedirs(output_folder_path)
+        print("Recreating the output folder at {} ...".format(output_folder_path))
 
     print("Loading the annotations of the {} dataset ...".format(dataset_name))
     train_and_valid_accumulated_info_dataframe, test_query_accumulated_info_dataframe, \
@@ -968,6 +971,7 @@ def main(_):
         if resume_after_freezing_backbone_training:
             freezed_backbone_trained_model_file_path = os.path.join(output_folder_path, "training_A", freezed_backbone_trained_model_file)
             assert os.path.isfile(freezed_backbone_trained_model_file_path), "Invalid filepath for loading intermediete trained model"
+            print("Loading weights from {} ...".format(freezed_backbone_trained_model_file_path))
             training_model.load_weights(freezed_backbone_trained_model_file_path)
 
             print("Unfreeze layers in the backbone model.")
@@ -991,9 +995,15 @@ def main(_):
                            use_multiprocessing=use_multiprocessing,
                            verbose=2)
 
+        # Confirm that if modelcheckpoint_callback works as intended then below won't happen.
         if not os.path.isfile(optimal_model_file_path):
             print("Saving model to {} ...".format(optimal_model_file_path))
             training_model.save(optimal_model_file_path)
+
+        # Save the last model regardless
+        final_model_file_path = os.path.join(output_folder_path, "final_training_model.h5")
+        print("Saving model to {} ...".format(final_model_file_path))
+        training_model.save(final_model_file_path)
 
     print("All done!")
 
