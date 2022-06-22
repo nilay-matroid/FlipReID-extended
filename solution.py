@@ -117,6 +117,15 @@ flags.DEFINE_bool("verbose", True, "Be verbose during dataloading")
 flags.DEFINE_bool("use_custom_eval_batch_size", False,
                   "Use custom eval batch size")
 flags.DEFINE_integer("custom_eval_batch_size", 16, "custom eval batch size")
+
+
+flags.DEFINE_string("freezed_backbone_trained_model_file",
+                    "freezed_backbone_trained_checkpoint.h5",
+                    "Model name to save as after freezed backbone training")
+flags.DEFINE_bool("resume_after_freezing_backbone_training", False, "Resume from directly after freezed backbone training is completed")
+flags.DEFINE_bool("exit_after_freezed_backbone_training", True, "exit after freezed backbone training is complete")
+
+
 FLAGS = flags.FLAGS
 
 
@@ -762,6 +771,9 @@ def main(_):
     evaluation_only, save_data_to_disk = FLAGS.evaluation_only, FLAGS.save_data_to_disk
     pretrained_model_file_path = FLAGS.pretrained_model_file_path
     special_num_classes = FLAGS.special_num_classes
+    freezed_backbone_trained_model_file = FLAGS.freezed_backbone_trained_model_file
+    resume_after_freezing_backbone_training = FLAGS.resume_after_freezing_backbone_training
+    exit_after_freezed_backbone_training = FLAGS.exit_after_freezed_backbone_training
 
     output_folder_path = os.path.abspath(
         os.path.join(FLAGS.output_folder_path,
@@ -921,7 +933,7 @@ def main(_):
                            use_multiprocessing=use_multiprocessing,
                            verbose=2)
     else:
-        if freeze_backbone_for_N_epochs > 0:
+        if not resume_after_freezing_backbone_training and freeze_backbone_for_N_epochs > 0:
             print("Freeze layers in the backbone model for {} epochs.".format(
                 freeze_backbone_for_N_epochs))
             historylogger_callback = HistoryLogger(
@@ -938,6 +950,25 @@ def main(_):
                                workers=workers,
                                use_multiprocessing=use_multiprocessing,
                                verbose=2)
+
+            # Always save the intermediete model by default
+            assert len(freezed_backbone_trained_model_file) > 0, "No file specified for saving intermediete trained model"
+            freezed_backbone_trained_model_file_path = os.path.join(output_folder_path, "training_A", freezed_backbone_trained_model_file)
+            print("Saving model to {} ...".format(freezed_backbone_trained_model_file_path))
+            training_model.save(freezed_backbone_trained_model_file_path)
+            
+            if exit_after_freezed_backbone_training:
+                print("All done for now!")
+                return
+
+            print("Unfreeze layers in the backbone model.")
+            specify_trainable(model=training_model, trainable=True)            
+            training_model.compile(**training_model.compile_kwargs)
+
+        if resume_after_freezing_backbone_training:
+            freezed_backbone_trained_model_file_path = os.path.join(output_folder_path, "training_A", freezed_backbone_trained_model_file)
+            assert os.path.isfile(freezed_backbone_trained_model_file_path), "Invalid filepath for loading intermediete trained model"
+            training_model.load_weights(freezed_backbone_trained_model_file_path)
 
             print("Unfreeze layers in the backbone model.")
             specify_trainable(model=training_model, trainable=True)
