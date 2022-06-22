@@ -167,7 +167,8 @@ def init_model(backbone_model_name, freeze_backbone_for_N_epochs, input_shape,
         if special_num_classes != -1:
             print("Classes model was trained on: ", special_num_classes)
             print("Using the above number of classes to load model")
-        output_tensor = Dense(units=special_num_classes,
+            class_num = special_num_classes
+        output_tensor = Dense(units=class_num,
                               use_bias=False,
                               kernel_initializer=RandomNormal(
                                   mean=0.0, stddev=0.001))(output_tensor)
