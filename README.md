@@ -1,6 +1,90 @@
 ![Python](https://img.shields.io/badge/python-3.8-blue?style=flat-square&logo=python)
 ![TensorFlow](https://img.shields.io/badge/tensorflow-2.2.3-green?style=flat-square&logo=tensorflow)
 
+
+# Matroid-FlipReID
+
+## Introduction
+This is a modified implementation of the paper "FlipReID: Closing the Gap Between Training and Inference in Person Re-Identification" to train and evaluate the model on other new datasets namely - LaST, SYSU-30k and the old academic dataset - Market1501
+
+## Environment
+```bash
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+conda config --set auto_activate_base false
+conda create --yes --name TensorFlow2.2 python=3.8
+conda activate TensorFlow2.2
+conda install --yes cudatoolkit=10.1 cudnn=7.6 -c nvidia
+conda install --yes cython matplotlib numpy=1.18 pandas pydot scikit-learn
+pip install tensorflow==2.2.3
+pip install tf2cv
+pip install opencv-python
+pip install albumentations --no-binary imgaug,albumentations
+```
+
+## Evaluation scripts
+- Market1501: 
+  - Without reranking
+    ```bash
+    python3 -u solution.py --dataset_name "Market1501" --backbone_model_name "resnesta50" --pretrained_model_file_path "checkpoints/Market1501_resnesta50_18209984.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1 --identity_num_per_batch 4 --image_num_per_identity 2 --save_data_to_disk
+    ```
+
+  - With reranking
+    ```bash
+    python3 -u solution.py --dataset_name "Market1501" --backbone_model_name "resnesta50" --pretrained_model_file_path "checkpoints/Market1501_resnesta50_18209984.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1 --identity_num_per_batch 4 --image_num_per_identity 2 --use_re_ranking
+    ```
+
+- LaST
+  - Eval set
+    - Without re-ranking
+      ```bash
+      python3 -u solution.py --dataset_name "LaST" --backbone_model_name "resnesta50" --pretrained_model_file_path "checkpoints/Market1501_resnesta50_18209984.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1 --identity_num_per_batch 4 --image_num_per_identity 1 --special_num_classes 751 --workers 1 --use_eval_set --verbose
+      ```
+
+    - With re-ranking
+      ```bash
+      python3 -u solution.py --dataset_name "LaST" --backbone_model_name "resnesta50" --pretrained_model_file_path "checkpoints/Market1501_resnesta50_18209984.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1 --identity_num_per_batch 4 --image_num_per_identity 1 --special_num_classes 751 --workers 1 --use_eval_set --verbose --use_re_ranking
+      ```
+
+  - Test set
+    - Without re-ranking
+      ```bash
+      python3 -u solution.py --dataset_name "LaST" --backbone_model_name "resnesta50" --pretrained_model_file_path "checkpoints/Market1501_resnesta50_18209984.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1 --identity_num_per_batch 2 --image_num_per_identity 1 --special_num_classes 751 --workers 1 --verbose --save_data_to_disk
+      ```
+      Same evaluation but using script:
+      ```bash
+      python3 eval_saved_feat.py --saved_feat_path "evaluation_only/LaST_resnesta50/test.npz"
+      ```
+
+    - With re-ranking \
+      Same scripts with --use_re_ranking argument \
+      Too much memory :(
+
+- SYSU-30k
+  - Without re-ranking
+    ```bash
+    python3 -u solution.py --dataset_name "SYSU-30k" --backbone_model_name "resnesta50" --pretrained_model_file_path "checkpoints/Market1501_resnesta50_18209984.h5" --use_horizontal_flipping_inside_model --use_horizontal_flipping_in_evaluation --output_folder_path "evaluation_only" --evaluation_only --freeze_backbone_for_N_epochs 0 --testing_size 1.0 --evaluate_testing_every_N_epochs 1 --identity_num_per_batch 1 --image_num_per_identity 2 --special_num_classes 751 --workers 1 --verbose --save_data_to_disk --epoch_num 1 --use_custom_eval_batch_size --custom_eval_batch_size 64 --save_data_to_disk
+    ```
+    Takes too much memory :(
+
+## Training scripts
+- LaST \
+  Following is the script. But takes too much memory.
+  ```bash
+  python3 -u solution.py --root_folder_path "/home/ubuntu/Datasets" --dataset_name "LaST" --use_horizontal_flipping_inside_model --nouse_horizontal_flipping_in_evaluation --steps_per_epoch 200 --epoch_num 200 --save_data_to_disk --backbone_model_name "resnesta50" --learning_rate_start 3e-4 --learning_rate_end 3e-4 --learning_rate_base 3e-4 --learning_rate_lower_bound 3e-6 --kernel_regularization_factor 0.0010 --bias_regularization_factor 0.0010 --gamma_regularization_factor 0.0010 --beta_regularization_factor 0.0010 --output_folder_path  "train/last" --verbose --use_eval_set --workers 1 --identity_num_per_batch 4 --image_num_per_identity 4
+  ```
+
+  For 2 stage training - Initial freezed backbone and then resuming from it:
+  - Initial freezed backbone training
+    ```bash
+    python3 -u solution.py --root_folder_path "/home/ubuntu/Datasets" --dataset_name "LaST" --use_horizontal_flipping_inside_model --nouse_horizontal_flipping_in_evaluation --steps_per_epoch 200 --epoch_num 200 --save_data_to_disk --backbone_model_name "resnesta50" --learning_rate_start 3e-4 --learning_rate_end 3e-4 --learning_rate_base 3e-4 --learning_rate_lower_bound 3e-6 --kernel_regularization_factor 0.0010 --bias_regularization_factor 0.0010 --gamma_regularization_factor 0.0010 --beta_regularization_factor 0.0010 --output_folder_path  "train/last" --verbose --use_eval_set --workers 1
+    ```
+
+  - Resuming from freezed backbone training
+    ```bash
+    python3 -u solution.py --root_folder_path "../Datasets" --dataset_name "LaST" --use_horizontal_flipping_inside_model --nouse_horizontal_flipping_in_evaluation --steps_per_epoch 200 --epoch_num 200 --backbone_model_name "resnesta50" --learning_rate_start 3e-4 --learning_rate_end 3e-4 --learning_rate_base 3e-4 --learning_rate_lower_bound 3e-6 --kernel_regularization_factor 0.0010 --bias_regularization_factor 0.0010 --gamma_regularization_factor 0.0010 --beta_regularization_factor 0.0010 --output_folder_path  "train/last" --verbose --use_eval_set --workers 1 --resume_after_freezing_backbone_training --identity_num_per_batch 4 --image_num_per_identity 4
+    ```
+
 # FlipReID: Closing the Gap Between Training and Inference in Person Re-Identification
 
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/flipreid-closing-the-gap-between-training-and/person-re-identification-on-msmt17)](https://paperswithcode.com/sota/person-re-identification-on-msmt17?p=flipreid-closing-the-gap-between-training-and)
